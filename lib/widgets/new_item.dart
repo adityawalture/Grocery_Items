@@ -5,6 +5,7 @@ import 'package:user_inputs_and_forms/data/categories.dart';
 import 'package:user_inputs_and_forms/models/category.dart';
 // import 'package:user_inputs_and_forms/models/grocery_item.dart';
 import 'package:http/http.dart' as http;
+import 'package:user_inputs_and_forms/models/grocery_item.dart';
 
 class NewItem extends StatefulWidget {
   const NewItem({super.key});
@@ -18,10 +19,14 @@ class _NewItemState extends State<NewItem> {
   var _nameEntered = '';
   var _enteredQuantity = 1;
   var _selectedCategory = categories[Categories.vegetables]!;
+  var _isLoading = false;
 
   void _savedItem() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      setState(() {
+        _isLoading = true;
+      });
       final url = Uri.https(
           'udemy-trail-default-rtdb.asia-southeast1.firebasedatabase.app',
           'shopping-list.json');
@@ -37,12 +42,20 @@ class _NewItemState extends State<NewItem> {
         }),
       );
 
+      final Map<String, dynamic> resData = json.decode(response.body);
       // print(response.body);
       // print(response.statusCode);
       if (!context.mounted) {
         return;
       }
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(
+        GroceryItems(
+          id: resData['name'],
+          name: _nameEntered,
+          quantity: _enteredQuantity,
+          category: _selectedCategory,
+        ),
+      );
       //   GroceryItems(
       //     id: DateTime.now().toString(),
       //     name: _nameEntered,
@@ -142,14 +155,22 @@ class _NewItemState extends State<NewItem> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () {
-                      _formKey.currentState!.reset();
-                    },
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            _formKey.currentState!.reset();
+                          },
                     child: const Text('Reset'),
                   ),
                   ElevatedButton(
-                    onPressed: _savedItem,
-                    child: const Text('Add Item'),
+                    onPressed: _isLoading ? null : _savedItem,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(),
+                          )
+                        : const Text('Add Item'),
                   ),
                 ],
               ),

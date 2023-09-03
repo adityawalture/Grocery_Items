@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-
 import 'package:flutter/material.dart';
 import 'package:user_inputs_and_forms/data/categories.dart';
 // import 'package:user_inputs_and_forms/data/dummy_items.dart';
@@ -18,6 +17,12 @@ class GroceryItemList extends StatefulWidget {
 class _GroceryItemListState extends State<GroceryItemList> {
   List<GroceryItems> _groceryItems = [];
 
+  //variable for circular loading
+  var _isLoading = true;
+
+  //variable for showing error
+  String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -29,15 +34,22 @@ class _GroceryItemListState extends State<GroceryItemList> {
         'udemy-trail-default-rtdb.asia-southeast1.firebasedatabase.app',
         'shopping-list.json');
     final response = await http.get(url);
+
+    //error handling
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = 'Failed to load... Please try again';
+      });
+    }
     // print(response.body);
     final Map<String, dynamic> listData = json.decode(response.body);
-    final List<GroceryItems> _loadedItems = [];
+    final List<GroceryItems> loadedItems = [];
     for (final item in listData.entries) {
       final category = categories.entries
           .firstWhere(
               (catItem) => catItem.value.title == item.value['category'])
           .value;
-      _loadedItems.add(
+      loadedItems.add(
         GroceryItems(
           id: item.key,
           name: item.value['name'],
@@ -47,17 +59,24 @@ class _GroceryItemListState extends State<GroceryItemList> {
       );
     }
     setState(() {
-      _groceryItems = _loadedItems;
+      _groceryItems = loadedItems;
+      _isLoading = false;
     });
   }
 
   void _addItem() async {
-    await Navigator.of(context).push<GroceryItems>(
+    final newItem = await Navigator.of(context).push<GroceryItems>(
       MaterialPageRoute(
         builder: (ctx) => const NewItem(),
       ),
     );
-    _loadItems();
+
+    if (newItem == null) {
+      return;
+    }
+    setState(() {
+      _groceryItems.add(newItem);
+    });
   }
 
   void _removeItems(GroceryItems item) {
@@ -71,6 +90,12 @@ class _GroceryItemListState extends State<GroceryItemList> {
     Widget content = const Center(
       child: Text('No items to show'),
     );
+
+    if (_isLoading) {
+      content = const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
     if (_groceryItems.isNotEmpty) {
       content = ListView.builder(
@@ -94,6 +119,14 @@ class _GroceryItemListState extends State<GroceryItemList> {
         ),
       );
     }
+
+    //error message
+    if (_error != null) {
+      content = Center(
+        child: Text(_error!),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Groceries'),
