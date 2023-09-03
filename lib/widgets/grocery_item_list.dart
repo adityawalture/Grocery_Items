@@ -79,10 +79,24 @@ class _GroceryItemListState extends State<GroceryItemList> {
     });
   }
 
-  void _removeItems(GroceryItems item) {
+  void _removeItems(GroceryItems item) async {
+    final index = _groceryItems.indexOf(item);
+
     setState(() {
       _groceryItems.remove(item);
     });
+
+    final url = Uri.https(
+        'udemy-trail-default-rtdb.asia-southeast1.firebasedatabase.app',
+        'shopping-list/${item.id}.json');
+
+    final response = await http.delete(url);
+
+    if (response.statusCode >= 400) {
+      setState(() {
+        _groceryItems.insert(index, item);
+      });
+    }
   }
 
   @override
