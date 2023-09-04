@@ -33,35 +33,49 @@ class _GroceryItemListState extends State<GroceryItemList> {
     final url = Uri.https(
         'udemy-trail-default-rtdb.asia-southeast1.firebasedatabase.app',
         'shopping-list.json');
-    final response = await http.get(url);
 
-    //error handling
-    if (response.statusCode >= 400) {
+    try {
+      final response = await http.get(url);
+      // print(response.body);
+      //error handling
+      if (response.statusCode >= 400) {
+        setState(() {
+          _error = 'Failed to load... Please try again';
+        });
+      }
+      //the following function defines that if their is no items or the GroceryItems are null
+      if (response.body == 'null') {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final Map<String, dynamic> listData = json.decode(response.body);
+      final List<GroceryItems> loadedItems = [];
+      for (final item in listData.entries) {
+        final category = categories.entries
+            .firstWhere(
+                (catItem) => catItem.value.title == item.value['category'])
+            .value;
+        loadedItems.add(
+          GroceryItems(
+            id: item.key,
+            name: item.value['name'],
+            quantity: item.value['quantity'],
+            category: category,
+          ),
+        );
+      }
       setState(() {
-        _error = 'Failed to load... Please try again';
+        _groceryItems = loadedItems;
+        _isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _error = 'Something went wrong..! Please try again';
       });
     }
-    // print(response.body);
-    final Map<String, dynamic> listData = json.decode(response.body);
-    final List<GroceryItems> loadedItems = [];
-    for (final item in listData.entries) {
-      final category = categories.entries
-          .firstWhere(
-              (catItem) => catItem.value.title == item.value['category'])
-          .value;
-      loadedItems.add(
-        GroceryItems(
-          id: item.key,
-          name: item.value['name'],
-          quantity: item.value['quantity'],
-          category: category,
-        ),
-      );
-    }
-    setState(() {
-      _groceryItems = loadedItems;
-      _isLoading = false;
-    });
   }
 
   void _addItem() async {
@@ -102,7 +116,17 @@ class _GroceryItemListState extends State<GroceryItemList> {
   @override
   Widget build(BuildContext context) {
     Widget content = const Center(
-      child: Text('No items to show'),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'No items to show',
+            style: TextStyle(fontSize: 19),
+          ),
+          SizedBox(width: 5),
+          Icon(Icons.list_alt_rounded),
+        ],
+      ),
     );
 
     if (_isLoading) {
